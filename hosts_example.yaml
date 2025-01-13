@@ -1,0 +1,22 @@
+all:
+  children:
+    broker_group:
+      children:
+        rabbitmq_cluster:
+          hosts:
+            rabbitmq-1:
+              ansible_host: 192.168.22.2
+            rabbitmq-2:
+              ansible_host: 192.168.22.3
+            rabbitmq-3:
+              ansible_host: 192.168.22.4
+          vars:
+            ansible_user: ansible
+            ansible_ssh_private_key_file: /home/user/.ssh/id_rsa
+        rabbitmq_haproxy:
+          hosts:
+            haproxy-server:
+              ansible_host: 192.168.22.5
+          vars:
+            ansible_user: ansible
+            ansible_ssh_private_key_file: /home/user/.ssh/id_rsa
