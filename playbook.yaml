@@ -1,7 +1,14 @@
 ---
-- name: Create RabbitMQ cluster with HAProxy on CentOS 7
-  hosts: broker_group
+- name: RabbitMQ Cluster Configuration 
+  hosts: rabbitmq_cluster
   become: true
   roles:
   - rabbitmq
-  - haproxy
+
+- name: HAProxy Configuration
+  hosts: rabbitmq_haproxy
+  become: true
+  roles: haproxy
+...
+
+# All made in CentOS 7

@@ -1,0 +1,19 @@
+---
+- name: Install HAProxy
+  ansible.builtin.yum:
+    name: haproxy
+    state: present
+    update_cache: true
+
+- name: Copy HAProxy config file
+  ansible.builtin.template:
+    src: haproxy.cfg
+    dest: /etc/haproxy/haproxy.cfg
+  notify: Restart HAProxy
+
+- name: Enable and start HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+    enabled: true
+...

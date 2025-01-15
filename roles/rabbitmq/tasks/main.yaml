@@ -13,6 +13,7 @@
   ansible.builtin.yum:
     name: erlang
     state: present
+    update_cache: true
 
 - name: Install RabbitMQ Server
   ansible.builtin.yum:
@@ -27,38 +28,41 @@
   ansible.builtin.set_fact:
     host_entries: "{{ host_entries + [hostvars[item]['ansible_default_ipv4']['address'] + ' ' + item]}}"
   loop: "{{ groups['rabbitmq_cluster'] }}"
-  when: "'rabbitmq_cluster' in group_names"
 
 - name: Add IP-lines to /etc/hosts
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ item }}"
   loop: "{{ host_entries }}"
-  when: "'rabbitmq_cluster' in group_names"
 
 - name: Get cookie from main machine
   ansible.builtin.slurp:
     src: /var/lib/rabbitmq/.erlang.cookie
   register: rabbitmq_main_cookie
-  when: "main_server is defined and main_server == true"
+  when: inventory_hostname in groups["main"]
 
-- name: Copy cookie for slave servers
-  ansible.builtin.copy:
-    content: |
-      {{ rabbitmq_main_cookie }}
-    dest: /var/lib/rabbitmq/.erlang.cookie
-  when: "main_server is defined and main_server == false"
+- block:
+  - name: Copy cookie for slave servers
+    ansible.builtin.copy:
+      content: |
+        {{ hostvars[groups["main"][0]].rabbitmq_main_cookie.content | b64decode }}
+      dest: /var/lib/rabbitmq/.erlang.cookie
+      owner: rabbitmq
+      group: rabbitmq
+      mode: "0400"
+
+  - name: Join slave servers
+    ansible.builtin.shell: |
+      rabbitmqctl stop_app
+      rabbitmqctl join_cluster --disc rabbit@{{ groups["main"][0].inventory_hostname }}
+      rabbitmqctl start_app
+  when: inventory_hostname in groups["slaves"]
+
+- name: Add management plugin
+  ansible.builtin.shell: rabbitmq-plugins enable rabbitmq_management
 
 - name: Enable and start RabbitMQ Server
   ansible.builtin.service:
     name: rabbitmq-server
     state: started
     enabled: true
-
-- name: Get info from RabbitMQ cluster status
-  ansible.builtin.shell: rabbitmqctl cluster_status
-  register: cluster_status
-
-- ansible.builtin.debug:
-    msg: cluster_status
-  tags: rabbitmq_status
